@@ -161,6 +161,7 @@
   var me = null;                 // the couple this person is answering for
   var mine = null;               // their answers, updated the moment they tap
   var dirty = false, writing = false;
+  var touched = false;           // true once this person has tapped; their own column then never gets overwritten by a stale read
   var notice = '';
 
   try{ me = localStorage.getItem('dinner-club-me'); }catch(e){}
@@ -242,12 +243,12 @@
     me = id;
     try{ localStorage.setItem('dinner-club-me', id); }catch(e){}
     mine = {a: clone((all[id] && all[id].a) || {})};
-    dirty = false;
+    dirty = false; touched = false;
   }
 
   function applyAll(next){
     all = next; phase = 'ready';
-    if(me && !dirty && !writing) mine = {a: clone((all[me] && all[me].a) || {})};
+    if(me && !dirty && !writing && !touched) mine = {a: clone((all[me] && all[me].a) || {})};
     if(me && !mine) mine = {a: {}};
     render();
   }
@@ -276,7 +277,7 @@
     if(t.dataset.k && me && mine){
       var k = t.dataset.k, nx = NEXT[mine.a[k] || ''];
       if(nx) mine.a[k] = nx; else delete mine.a[k];
-      dirty = true; notice = '';
+      dirty = true; touched = true; notice = '';
       render(); flush();
     }
   });
