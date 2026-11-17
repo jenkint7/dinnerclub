@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dinner Club Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Layout: one card per month; each weekend shows six squares, one per couple, colored by their answer. */
+  :root{
+    --bg:#EEF1EC;
+    --surface:#FBFCFA;
+    --ink:#1D2630;
+    --muted:#5E6A73;
+    --line:#D5DCD3;
+    --chip:#E3E9E1;
+    --accent:#2F5D50;
+    --accent-ink:#FFFFFF;
+    --yes-bg:#2F7D5B; --yes-fg:#FFFFFF;
+    --maybe-bg:#E6B93A; --maybe-fg:#2B2208;
+    --no-bg:#C2503E; --no-fg:#FFFFFF;
+    --fri-bg:#7A4FA0; --fri-fg:#FFFFFF;
+    --none-bg:#E3E9E1; --none-fg:#5E6A73;
+    --display:'Bricolage Grotesque','Helvetica Neue',Arial,sans-serif;
+    --body:'Instrument Sans','Helvetica Neue',Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#141B1F; --surface:#1C262B; --ink:#E6ECE8; --muted:#9AA8A7; --line:#2C3A40; --chip:#243038;
+      --accent:#6FB59C; --accent-ink:#0F1A17;
+      --yes-bg:#5FBF92; --yes-fg:#0F1A17;
+      --maybe-bg:#E8B84A; --maybe-fg:#241B05;
+      --no-bg:#E3806E; --no-fg:#1F0E0A;
+      --fri-bg:#B592DB; --fri-fg:#1A1026;
+      --none-bg:#243038; --none-fg:#9AA8A7;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141B1F; --surface:#1C262B; --ink:#E6ECE8; --muted:#9AA8A7; --line:#2C3A40; --chip:#243038;
+    --accent:#6FB59C; --accent-ink:#0F1A17;
+    --yes-bg:#5FBF92; --yes-fg:#0F1A17;
+    --maybe-bg:#E8B84A; --maybe-fg:#241B05;
+    --no-bg:#E3806E; --no-fg:#1F0E0A;
+    --fri-bg:#B592DB; --fri-fg:#1A1026;
+    --none-bg:#243038; --none-fg:#9AA8A7;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box}
+  body{margin:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:var(--body); font-size:15px; line-height:1.5;
+    padding-inline:max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+    padding-block:28px 64px;
+  }
+  .page{max-width:640px; margin:0 auto; display:flex; flex-direction:column; gap:20px}
+  #app{display:flex; flex-direction:column; gap:16px}
+  h1,h2{font-family:var(--display); text-wrap:balance; margin:0}
+  .eyebrow{font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600}
+  h1{font-size:clamp(30px,7vw,42px); line-height:1.08; font-weight:700; letter-spacing:-.02em; margin-top:6px}
+  .lede{color:var(--muted); margin:0; max-width:56ch}
+  .notice{margin:0; padding:10px 14px; border-radius:10px; background:var(--chip); border:1px solid var(--line); font-size:14px}
+
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px}
+  .panel-label{font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:10px}
+  .pills{display:flex; flex-wrap:wrap; gap:8px}
+  .pill{
+    font:inherit; font-weight:600; font-size:14px;
+    padding:8px 14px; border-radius:999px; cursor:pointer;
+    border:1.5px solid var(--line); background:var(--chip); color:var(--ink);
+  }
+  .pill small{font-weight:400; font-size:12px; color:inherit; opacity:.8}
+  .pill[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+  button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .legend{display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color:var(--muted)}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .legend i{width:14px; height:14px; border-radius:4px; display:inline-block}
+
+  .month{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 16px 6px}
+  .month-head{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:6px}
+  .month h2{font-size:24px; font-weight:700; letter-spacing:-.01em}
+  .host{margin:2px 0 0; color:var(--muted); font-size:14px}
+  .host strong{color:var(--ink); font-weight:600}
+  .badge{
+    font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; white-space:nowrap;
+    background:var(--chip); color:var(--muted);
+  }
+  .badge.open{color:var(--no-bg); background:transparent; border:1.5px dashed var(--no-bg)}
+  .badge.all{background:var(--accent); color:var(--accent-ink)}
+
+  .wk{padding:12px 0 14px; border-top:1px solid var(--line)}
+  .wk-head{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:4px 12px; margin-bottom:8px}
+  .when{font-weight:600}
+  .when small{font-weight:400; color:var(--muted); font-size:12px; margin-left:8px}
+  .tally{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted)}
+  .tiles{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px}
+  @media (min-width:560px){ .tiles{grid-template-columns:repeat(6, minmax(0,1fr))} }
+  .tile{
+    font:inherit; font-size:13px; font-weight:700; letter-spacing:-.01em;
+    min-width:0; padding:9px 4px 7px; border-radius:8px; cursor:default; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    border:0; display:flex; flex-direction:column; align-items:center; gap:1px; line-height:1.15;
+    background:var(--none-bg); color:var(--none-fg);
+  }
+  .tile .mark{font-size:11px; font-weight:600; min-height:14px}
+  .tile.yes{background:var(--yes-bg); color:var(--yes-fg)}
+  .tile.maybe{background:var(--maybe-bg); color:var(--maybe-fg)}
+  .tile.no{background:var(--no-bg); color:var(--no-fg)}
+  .tile.fri{background:var(--fri-bg); color:var(--fri-fg)}
+  .tile.edit{cursor:pointer; outline:2px solid var(--accent); outline-offset:2px}
+  .tile.edit:active{transform:scale(.96)}
+  @media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+</style>
+
+
+</head>
+<body>
+<main class="page">
+  <header>
+    <div class="eyebrow">Dinner Club · November to September</div>
+    <h1>Who's hosting, and when</h1>
+  </header>
+  <div id="app"></div>
+</main>
+
+<script>
+(function(){
+  var COUPLES = [
+    {id:"ts",  name:"Jenkins"},
+    {id:"tl",  name:"Snow"},
+    {id:"dn1", name:"Cantrell"},
+    {id:"tk",  name:"Troy"},
+    {id:"dn2", name:"Danny"},
+    {id:"jk",  name:"Wax"}
+  ];
+  var MONTHS = [
+    {key:"Nov", name:"November", year:2026, mm:"11", host:"Snow", days:[21,28]},
+    {key:"Dec", name:"December", year:2026, mm:"12", host:"Troy & Kim Cruthers", days:[5,12,19,26]},
+    {key:"Jan", name:"January",  year:2027, mm:"01", host:"Cantrell", days:[2,9,16,23,30]},
+    {key:"Feb", name:"February", year:2027, mm:"02", host:"Danny & Natasha Cruthers", days:[6,13,20,27]},
+    {key:"Mar", name:"March",    year:2027, mm:"03", host:"John & Katy Witherwax", days:[6,13,20,27]},
+    {key:"Apr", name:"April",    year:2027, mm:"04", host:"Todd & Suzanne Jenkins", days:[3,10,17,24]},
+    {key:"May", name:"May",      year:2027, mm:"05", host:"Tony & Lisa Snow", days:[1,8,15,22,29]},
+    {key:"Jun", name:"June",     year:2027, mm:"06", host:"Troy & Kim Cruthers", days:[5,12,19,26]},
+    {key:"Jul", name:"July",     year:2027, mm:"07", host:"Cantrell", days:[3,10,17,24,31]},
+    {key:"Aug", name:"August",   year:2027, mm:"08", host:"Danny & Natasha Cruthers", days:[7,14,21,28]},
+    {key:"Sep", name:"September",year:2027, mm:"09", host:"John & Katy Witherwax", days:[4,11,18,25]}
+  ];
+  var LABEL = {yes:"Free Saturday", maybe:"Maybe", no:"Can't", fri:"Friday night only"};
+  var MARK = {yes:"✓", maybe:"?", no:"✕", fri:"Fri"};
+  var NEXT = {"":"yes", yes:"maybe", maybe:"no", no:"fri", fri:""};
+
+  var app = document.getElementById('app');
+  var db = null;                 // the shared database, once this viewer can use it
+  var phase = 'loading';         // loading | ready | signedout | error
+  var canWrite = null;           // null = unknown, false = view only
+  var all = {};                  // couple id -> {a:{date:status}}, live from the database
+  var me = null;                 // the couple this person is answering for
+  var mine = null;               // their answers, updated the moment they tap
+  var dirty = false, writing = false;
+  var notice = '';
+
+  try{ me = localStorage.getItem('dinner-club-me'); }catch(e){}
+  if(!couple(me)) me = null;
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function pad(n){ return n < 10 ? '0'+n : ''+n; }
+  function iso(m, d){ return m.year + '-' + m.mm + '-' + pad(d); }
+  function wkLabel(m, d){ return m.key + ' ' + d; }
+  function couple(id){ for(var i=0;i<COUPLES.length;i++){ if(COUPLES[i].id===id) return COUPLES[i]; } return null; }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function mayEdit(){ return phase === 'ready' && canWrite !== false; }
+
+  function status(k, cid){
+    if(cid === me && mine) return mine.a[k] || '';
+    var d = all[cid];
+    return (d && d.a && d.a[k]) || '';
+  }
+  function tally(k){
+    var n = {yes:0, maybe:0, no:0, fri:0};
+    COUPLES.forEach(function(c){ var s = status(k, c.id); if(s) n[s]++; });
+    if(n.yes === COUPLES.length) return '<span class="badge all">All 6 free</span>';
+    var parts = [];
+    if(n.yes) parts.push(n.yes + ' free');
+    if(n.maybe) parts.push(n.maybe + ' maybe');
+    if(n.no) parts.push(n.no + " can't");
+    if(n.fri) parts.push(n.fri + ' Friday only');
+    return parts.length ? parts.join(' · ') : 'No answers yet';
+  }
+
+  function render(){
+    var y = window.scrollY;
+    var h = '';
+    if(phase === 'signedout'){
+      h += '<p class="notice">Sign in to Claude with the account Todd invited, then reopen this link to see and update the board.</p>';
+    } else if(phase === 'error'){
+      h += '<p class="notice">' + esc(notice || 'The board could not load. Reload the page in a moment.') + '</p>';
+    } else {
+      h += '<p class="lede">Saturday dinners. Tap your name, then tap your square under each Saturday. Green is free, yellow is maybe, red is can\'t, and purple means Friday night works but not Saturday. Everyone sees changes as they happen.</p>';
+      if(phase === 'loading') h += '<p class="notice">Loading answers…</p>';
+      else if(canWrite === false) h += '<p class="notice">You can see the board but not change it. Ask Todd to invite you as an editor.</p>';
+      else if(notice) h += '<p class="notice" role="status">' + esc(notice) + '</p>';
+    }
+    h += '<div class="legend"><span><i style="background:var(--yes-bg)"></i>Free Saturday</span><span><i style="background:var(--maybe-bg)"></i>Maybe</span><span><i style="background:var(--no-bg)"></i>Can\'t</span><span><i style="background:var(--fri-bg)"></i>Friday night only</span><span><i style="background:var(--none-bg)"></i>No answer yet</span></div>';
+
+    if(mayEdit()){
+      h += '<section class="panel" aria-labelledby="who"><div class="panel-label" id="who">You are</div><div class="pills">';
+      COUPLES.forEach(function(c){
+        h += '<button type="button" class="pill" data-me="' + c.id + '" aria-pressed="' + (me === c.id ? 'true' : 'false') + '">' + esc(c.name) + '</button>';
+      });
+      h += '</div></section>';
+    }
+
+    MONTHS.forEach(function(m){
+      var open = !m.host;
+      h += '<section class="month" aria-label="' + m.name + '"><div class="month-head"><div><h2>' + m.name + '</h2>' +
+           (open ? '<p class="host"><strong>Host needed</strong></p>'
+                 : '<p class="host">Hosted by <strong>' + esc(m.host) + '</strong>' + (m.hostNote ? ' (' + esc(m.hostNote) + ')' : '') + '</p>') +
+           '</div><span class="badge' + (open ? ' open' : '') + '">' + (open ? 'Open' : 'Host set') + '</span></div>';
+      m.days.forEach(function(d){
+        var k = iso(m, d);
+        h += '<div class="wk"><div class="wk-head"><div class="when">' + wkLabel(m,d) + '<small>Saturday</small></div><div class="tally">' + tally(k) + '</div></div><div class="tiles">';
+        COUPLES.forEach(function(c){
+          var s = status(k, c.id);
+          var edit = mayEdit() && c.id === me;
+          h += '<button type="button" class="tile ' + s + (edit ? ' edit' : '') + '"' + (edit ? ' data-k="' + k + '"' : ' disabled') +
+               ' aria-label="' + esc(c.name) + ', ' + wkLabel(m,d) + ': ' + (s ? LABEL[s] : 'no answer') + '">' +
+               esc(c.name) + '<span class="mark" aria-hidden="true">' + (s ? MARK[s] : '') + '</span></button>';
+        });
+        h += '</div></div>';
+      });
+      h += '</section>';
+    });
+    app.innerHTML = h;
+    window.scrollTo(0, y);
+  }
+
+  function chooseMe(id){
+    me = id;
+    try{ localStorage.setItem('dinner-club-me', id); }catch(e){}
+    mine = {a: clone((all[id] && all[id].a) || {})};
+    dirty = false;
+  }
+
+  function applyAll(next){
+    all = next; phase = 'ready';
+    if(me && !dirty && !writing) mine = {a: clone((all[me] && all[me].a) || {})};
+    if(me && !mine) mine = {a: {}};
+    render();
+  }
+
+  // Write this couple's answers. One write at a time; taps made during a write go out right after.
+  function flush(){
+    if(writing || !dirty || !me || !canSave()) return;
+    writing = true; dirty = false;
+    saveMine(me, {a: clone(mine.a)}).then(function(){
+      writing = false; notice = '';
+      if(dirty) flush(); else { render(); afterSave(); }
+    }, function(err){
+      writing = false; dirty = true;
+      var why = failure(err);
+      if(why === 'viewonly'){ canWrite = false; dirty = false; mine = null; notice = ''; }
+      else if(why === 'full'){ notice = 'The board is full and could not save. Tell Todd.'; }
+      else { notice = 'Your last change did not save. Tap again to retry.'; }
+      render();
+    });
+  }
+
+  app.addEventListener('click', function(e){
+    var t = e.target.closest('button');
+    if(!t || t.disabled) return;
+    if(t.dataset.me){ chooseMe(t.dataset.me); render(); return; }
+    if(t.dataset.k && me && mine){
+      var k = t.dataset.k, nx = NEXT[mine.a[k] || ''];
+      if(nx) mine.a[k] = nx; else delete mine.a[k];
+      dirty = true; notice = '';
+      render(); flush();
+    }
+  });
+
+  render();
+
+  /*DATA-LAYER-START*/
+  // Netlify version: the board lives in a small Netlify function. No sign-in for anyone.
+  function canSave(){ return true; }
+  function saveMine(cid, body){
+    return fetch('/api/board', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({couple: cid, a: body.a})})
+      .then(function(r){ if(!r.ok){ var e = new Error('save failed'); e.status = r.status; throw e; } });
+  }
+  function failure(err){ return err && err.status === 413 ? 'full' : 'retry'; }
+  function afterSave(){ load(); }
+  function load(){
+    return fetch('/api/board', {cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('load failed'); return r.json(); }).then(function(j){
+      var next = {}, c = (j && j.couples) || {};
+      Object.keys(c).forEach(function(id){ next[id] = {a: (c[id] && c[id].a) || {}}; });
+      applyAll(next);
+    }).catch(function(){
+      if(phase !== 'ready'){ phase = 'error'; notice = 'The board could not load. Reload the page in a moment.'; render(); }
+    });
+  }
+  function connect(){
+    load();
+    setInterval(function(){ if(!dirty && !writing && !document.hidden) load(); }, 15000);
+  }
+  /*DATA-LAYER-END*/
+
+  render();
+  connect();
+})();
+</script>
+</body>
+</html>
